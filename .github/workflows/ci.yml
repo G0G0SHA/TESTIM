@@ -1,0 +1,57 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "dev", "fix" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Проверка кода (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Настройка Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Установка зависимостей
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Запуск UI-тестов Selenium
+        run: |
+          pytest test_app.py
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Проверка кода (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Настройка GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Загрузка артефактов страницы
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Развертывание на GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
